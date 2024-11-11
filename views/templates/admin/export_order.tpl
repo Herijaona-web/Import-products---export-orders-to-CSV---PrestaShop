@@ -23,7 +23,7 @@
                         <td class="text-center"><span class="badge badge-success rounded">{convertPrice price=$order.total}</span></td>
                         <td class="text-center">{$order.payment}</td>
                         <td class="text-center">{$order.order_date|date_format:"%d/%m/%Y %H:%M"}</td>
-                        <td class="text-center"><a href={$order.link} style="background: #0058cb;padding: 7px;color: white;font-weight: 600;border-radius: 3px;" class="download-csv" href="">Télécharger</a></td>
+                        <td class="text-center"><a href={$order.link} style="background: #0058cb;padding: 7px;color: white;font-weight: 600;border-radius: 3px;" class="download-csv" href="">Aperçu</a></td>
                     </tr>
                 {/foreach}
             </tbody>

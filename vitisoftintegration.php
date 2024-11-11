@@ -309,8 +309,12 @@ class VitisoftIntegration extends Module
             return json_encode(['status' => 'error', 'message' => 'Commande introuvable.']);
         }
     
-        // Récupérer le client de la commande
+        // Récupérer le client et les informations de facturation et livraison
         $customer = new Customer($order->id_customer);
+        $billingAddress = new Address($order->id_address_invoice);
+        $deliveryAddress = new Address($order->id_address_delivery);
+
+        // var_dump($billingAddress);
     
         // Récupérer les produits associés à la commande
         $products = $order->getProducts();
@@ -325,37 +329,77 @@ class VitisoftIntegration extends Module
     
         // Ouvrir le fichier en mode écriture
         $file = fopen($filename, 'w');
+
+        // Ajouter le BOM UTF-8 pour gérer les caractères spéciaux
+        fputs($file, "\xEF\xBB\xBF");
     
         // Définir les en-têtes du fichier CSV
         $headers = [
-            'order_id', 
-            'customer_name', 
-            'customer_email', 
-            'product_reference', 
-            'product_name', 
-            'product_quantity', 
-            'product_price'
+            'numéro_commande', 'mail_client', 'référence_commande_client', 'date_heure_commande', 
+            'civilité_facturation', 'nom_facturation', 'prenom_facturation', 'societe_facturation', 
+            'adresse1_facturation', 'adresse2_facturation', 'code_postal_facturation', 'ville_facturation', 
+            'pays_facturation', 'téléphone_facturation', 'mobile_facturation', 'nom_livraison', 
+            'prénom_livraison', 'adresse1_livraison', 'adresse2_livraison', 'code_postal_livraison', 
+            'ville_livraison', 'pays_livraison', 'téléphone_livraison', 'mobile_livraison', 'mode_de_règlement', 
+            'commentaire_livraison', 'montant_livraison', 'Transporteur', 'Total_HT', 'numéro_ligne', 
+            'numéro_produit_vitisoft', 'désignation', 'quantité', 'taux_tva', 'prix_unitaire', 
+            'prix_unitaire_sans_remise', 'montant_remise_unitaire', 'total_ht_ligne'
         ];
         fputcsv($file, $headers);
+
+        $idCarrier = $order->id_carrier;
+
+        // Obtenir le nom du transporteur
+        $carrier = new Carrier($idCarrier);
     
         // Parcourir les produits et ajouter leurs informations dans le fichier CSV
-        foreach ($products as $product) {
+        foreach ($products as $index => $product) {
             $line = [
-                'order_id' => $order->id,
-                'customer_name' => $customer->firstname . ' ' . $customer->lastname,
-                'customer_email' => $customer->email,
-                'product_reference' => $product['product_reference'],
-                'product_name' => $product['product_name'],
-                'product_quantity' => $product['product_quantity'],
-                'product_price' => $product['unit_price_tax_incl']
-            ];
+                'numéro_commande' => $order->id,
+                'mail_client' => $customer->email,
+                'référence_commande_client' => $order->reference,
+                'date_heure_commande' => $order->date_add,
+                'civilité_facturation' => $customer->id_gender,
+                'prenom_facturation' => $billingAddress->firstname,
+                'societe_facturation' => $billingAddress->company,
+                'adresse1_facturation' => $billingAddress->address1,
+                'adresse2_facturation' => $billingAddress->address2,
+                'code_postal_facturation' => $billingAddress->postcode,
+                'ville_facturation' => $billingAddress->city,
+                'pays_facturation' => Country::getNameById(Configuration::get('PS_LANG_DEFAULT'), $billingAddress->id_country),
+                'téléphone_facturation' => $billingAddress->phone,
+                'mobile_facturation' => $billingAddress->phone_mobile,
+                'nom_livraison' => $deliveryAddress->lastname,
+                'prénom_livraison' => $deliveryAddress->firstname,
+                'adresse1_livraison' => $deliveryAddress->address1,
+                'adresse2_livraison' => $deliveryAddress->address2,
+                'code_postal_livraison' => $deliveryAddress->postcode,
+                'ville_livraison' => $deliveryAddress->city,
+                'pays_livraison' => Country::getNameById(Configuration::get('PS_LANG_DEFAULT'), $deliveryAddress->id_country),
+                'téléphone_livraison' => $deliveryAddress->phone,
+                'mobile_livraison' => $deliveryAddress->phone_mobile,
+                'mode_de_règlement' => $order->payment,
+                'commentaire_livraison' => $order->gift_message,
+                'montant_livraison' => number_format($order->total_shipping_tax_incl, 2), // Arrondi à 2 décimales
+                'Transporteur' => $carrier->name,
+                'Total_HT' => number_format($order->total_paid_tax_excl, 2), // Arrondi à 2 décimales
+                'numéro_ligne' => $index + 1,
+                'numéro_produit_vitisoft' => $product['product_reference'],
+                'désignation' => $product['product_name'],
+                'quantité' => $product['product_quantity'],
+                'taux_tva' => number_format($product['tax_rate'], 2), // Arrondi à 2 décimales
+                'prix_unitaire' => number_format($product['unit_price_tax_incl'], 2), // Arrondi à 2 décimales
+                'prix_unitaire_sans_remise' => number_format($product['unit_price_tax_excl'], 2), // Arrondi à 2 décimales
+                'montant_remise_unitaire' => number_format($product['reduction_amount_tax_excl'], 2), // Arrondi à 2 décimales
+                'total_ht_ligne' => number_format($product['total_price_tax_excl'], 2) // Arrondi à 2 décimales
+            ];            
             fputcsv($file, $line);
         }
     
         // Fermer le fichier après l'écriture
         fclose($file);
     
-        // Vérifier et créer le dossier de destination si nécessaire
+        // Créer le dossier "processed" si nécessaire et déplacer le fichier
         $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/processed/';
         if (!is_dir($processedDirectoryPath)) {
             if (!mkdir($processedDirectoryPath, 0777, true)) {
@@ -363,19 +407,15 @@ class VitisoftIntegration extends Module
             }
         }
     
-        // Déplacer le fichier vers le dossier "processed" une fois qu'il a été traité
         $processedFilePath = $processedDirectoryPath . basename($filename);
-        $fileMoved = rename($filename, $processedFilePath);
-    
-        // Vérifier si le fichier a bien été déplacé
-        if ($fileMoved) {
-            // Mettre à jour la configuration avec l'état "uploaded"
+        if (rename($filename, $processedFilePath)) {
             Configuration::updateValue('viti_file_' . $orderId, 'uploaded');
             return json_encode(['status' => 'success', 'message' => 'Fichier CSV généré, déplacé et l\'état mis à jour avec succès.', 'file' => $processedFilePath]);
         } else {
             return json_encode(['status' => 'error', 'message' => 'Échec du déplacement du fichier CSV.']);
         }
     }
+    
         
 
     public function hookActionOrderStatusPostUpdate($params)
