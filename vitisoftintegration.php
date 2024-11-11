@@ -22,7 +22,7 @@ class VitisoftIntegration extends Module
     public function install()
     {
         // Installer le module et enregistrer le hook actionOrderStatusPostUpdate
-        if (!parent::install() || !$this->registerHook('actionOrderStatusPostUpdate') || !$this->registerHook('displayBackOfficeHeader') ) {
+        if (!parent::install() || !$this->registerHook('actionOrderStatusPostUpdate') || !$this->registerHook('displayBackOfficeHeader')) {
             return false; // Si l'installation échoue ou le hook ne peut pas être enregistré
         }
     
@@ -37,9 +37,8 @@ class VitisoftIntegration extends Module
         // Créer les sous-dossiers nécessaires
         $subDirs = [
             $moduleDir . '/files',
-            $moduleDir . '/files/processed',
-            $moduleDir . '/orders',
-            $moduleDir . '/orders/processed'
+            $moduleDir . '/files/orders/processed',
+            $moduleDir . '/files/products/processed'
         ];
     
         foreach ($subDirs as $dir) {
@@ -48,23 +47,29 @@ class VitisoftIntegration extends Module
             }
         }
     
+        // Définir les bonnes permissions pour permettre l'accès aux fichiers
+        foreach ($subDirs as $dir) {
+            // Assurez-vous que les fichiers sont accessibles en lecture/écriture
+            chmod($dir, 0777);  // Permissions de lecture, écriture, exécution pour tous
+        }
+    
         // Ajouter la tâche cron
         // if (!$this->addCronJob()) {
         //     return false; // Vérifier si la tâche cron a été ajoutée
         // }
     
         // Ajouter les tabs
-        if (!$this->addTab('AdminExportOrder', 'AdminParentOrders', 'Commande exportés en csv', $this->name)) {
+        if (!$this->addTab('AdminExportOrder', 'AdminParentOrders', 'Exportées en csv (Vitisoft)', $this->name)) {
             return false; // Si l'ajout du tab "Export Order" échoue
         }
     
         if (!$this->addTab('AdminVitisoftImport', 'AdminCatalog', 'Imports des produits csv', $this->name)) {
-            return false; // If the tab creation fails
+            return false; // Si l'ajout du tab "Imports des produits csv" échoue
         }        
     
         return true; // Retourner true si l'installation a réussi
     }
-      
+    
     public function addTab($className, $parentTabClass, $tabName, $moduleName)
     {
         // Créer un nouvel objet Tab
@@ -119,8 +124,8 @@ class VitisoftIntegration extends Module
     // Fonction qui sera appelée par le CRON pour traiter les fichiers CSV envoyés par Vitisoft
     public function processVitisoftFiles()
     {
-        $directoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/';
-        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/processed/';
+        $directoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/products/';
+        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/products/processed/';
         $files = glob($directoryPath . '*.csv');
 
         foreach ($files as $file) {
@@ -298,11 +303,10 @@ class VitisoftIntegration extends Module
 
     public function exportOrderToCSV($orderId)
     {
-        
         // Récupérer la commande
         $order = new Order($orderId);
         if (!Validate::isLoadedObject($order)) {
-            return 'Commande introuvable.';
+            return json_encode(['status' => 'error', 'message' => 'Commande introuvable.']);
         }
     
         // Récupérer le client de la commande
@@ -312,7 +316,12 @@ class VitisoftIntegration extends Module
         $products = $order->getProducts();
     
         // Définir le chemin du fichier CSV à générer
-        $filename = _PS_MODULE_DIR_ . 'vitisoftintegration/orders/order_' . $orderId . '.csv';
+        $filename = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/order_' . $orderId . '.csv';
+    
+        // Vérifier si le fichier peut être créé
+        if (!is_writable(_PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/')) {
+            return json_encode(['status' => 'error', 'message' => 'Le dossier de destination n\'est pas accessible en écriture.']);
+        }
     
         // Ouvrir le fichier en mode écriture
         $file = fopen($filename, 'w');
@@ -347,9 +356,11 @@ class VitisoftIntegration extends Module
         fclose($file);
     
         // Vérifier et créer le dossier de destination si nécessaire
-        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/orders/processed/';
+        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/processed/';
         if (!is_dir($processedDirectoryPath)) {
-            mkdir($processedDirectoryPath, 0777, true);
+            if (!mkdir($processedDirectoryPath, 0777, true)) {
+                return json_encode(['status' => 'error', 'message' => 'Échec de la création du dossier de destination.']);
+            }
         }
     
         // Déplacer le fichier vers le dossier "processed" une fois qu'il a été traité
@@ -360,12 +371,10 @@ class VitisoftIntegration extends Module
         if ($fileMoved) {
             // Mettre à jour la configuration avec l'état "uploaded"
             Configuration::updateValue('viti_file_' . $orderId, 'uploaded');
-            return 'Fichier CSV de la commande généré, déplacé et l\'état mis à jour avec succès.';
+            return json_encode(['status' => 'success', 'message' => 'Fichier CSV généré, déplacé et l\'état mis à jour avec succès.', 'file' => $processedFilePath]);
         } else {
-            return 'Échec du déplacement du fichier CSV.';
+            return json_encode(['status' => 'error', 'message' => 'Échec du déplacement du fichier CSV.']);
         }
-
-
     }
         
 

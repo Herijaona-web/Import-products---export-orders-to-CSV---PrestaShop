@@ -3,13 +3,14 @@
         <table class="table table-bordered table-striped">
             <thead>
                 <tr class="table-primary">
-                    <th class="text-center">ID Commande</th>
+                    <th class="text-center">ID</th>
                     <th class="text-center">Référence</th>
                     <th class="text-center">Nouveau Client</th>
                     <th class="text-center">Nom Client</th>
                     <th class="text-center">Total</th>
                     <th class="text-center">Paiement</th>
                     <th class="text-center">Date</th>
+                    <th class="text-center"></th>
                 </tr>
             </thead>
             <tbody>
@@ -22,6 +23,7 @@
                         <td class="text-center"><span class="badge badge-success rounded">{convertPrice price=$order.total}</span></td>
                         <td class="text-center">{$order.payment}</td>
                         <td class="text-center">{$order.order_date|date_format:"%d/%m/%Y %H:%M"}</td>
+                        <td class="text-center"><a href={$order.link} style="background: #0058cb;padding: 7px;color: white;font-weight: 600;border-radius: 3px;" class="download-csv" href="">Télécharger</a></td>
                     </tr>
                 {/foreach}
             </tbody>

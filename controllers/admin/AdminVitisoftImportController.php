@@ -29,20 +29,18 @@ class AdminVitisoftImportController extends ModuleAdminController
             $file = $_FILES['vitisoft_import_file'];
             if ($file && $file['error'] == 0) {
                 // Process the file, e.g., move it to a specific folder or import data
-                $uploadDir = _PS_MODULE_DIR_ . 'vitisoftintegration/files/';
+                $uploadDir = _PS_MODULE_DIR_ . 'vitisoftintegration/files/products/';
                 $uploadFile = $uploadDir . basename($file['name']);
                 
                 if (move_uploaded_file($file['tmp_name'], $uploadFile)) {
-                    $this->confirmations[] = $this->l('File uploaded successfully!');
+                    $this->confirmations[] = $this->l('Fichier téléchargé avec succès !');
                 } else {
-                    $this->errors[] = $this->l('An error occurred while uploading the file.');
+                    $this->errors[] = $this->l('Une erreur est survenue lors du téléchargement du fichier.');
                 }
             }
         }
     }
 }
-
-
 
 
 // class AdminVitisoftImportController extends ModuleAdminController
