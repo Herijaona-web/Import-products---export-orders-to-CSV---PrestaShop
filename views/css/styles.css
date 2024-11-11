@@ -1,0 +1,106 @@
+/* Style pour le tableau d'export des commandes */
+.table-responsive {
+    margin-top: 20px;
+}
+
+.table-bordered {
+    border: 3px solid #007bff;
+}
+
+.table-export-viti .table-striped tbody tr,.table-export-viti .table-striped thead tr {
+    height: 45px;
+}
+
+.table-export-viti .table-striped thead tr th{
+    vertical-align: middle;
+    font-weight: 700;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #f9f9f9;
+}
+
+.table-striped tbody td{
+    color: #3e3e3e !important;
+}
+
+.table-primary {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+
+/***/
+/* Masquer le champ de fichier réel */
+.custom-file-input {
+    display: none;
+}
+
+/* Conteneur pour les boutons alignés */
+.file-upload {
+    display: flex;
+    gap: 10px; /* Espacement entre les boutons */
+    align-items: center;
+    flex-direction: row;
+}
+
+/* Bouton pour choisir le fichier */
+.custom-file-btn {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.custom-file-btn:hover {
+    background-color: #0056b3;
+}
+
+/* Bouton pour uploader le fichier */
+.btn-primary {
+    padding: 10px 20px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+.btn-primary:hover {
+    background-color: #218838;
+}
+
+/* Style pour afficher le nom du fichier en bas */
+.file-name {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #333;
+    text-align: left;
+    word-wrap: break-word;
+}
+
+#vitisoft_import_file{
+    display: none;
+}
+#choose-file-btn{
+    background: transparent;
+    border: 1px solid #5ec2ff;
+    color: #122529;
+    text-transform: uppercase;
+}
+#file-name{
+    color: #0a8d00;
+    font-style: italic;
+}

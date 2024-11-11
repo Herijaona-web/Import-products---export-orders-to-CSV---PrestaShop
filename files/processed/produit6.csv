@@ -1,0 +1,4 @@
+name,reference,quantity,price,tax_id,category,image_url,tax_id,description,short_description
+Produit A,REF004,10,19.99,1,HOME,https://placehold.jp/800x801.png,1,description test 2,short description
+Produit B,REF002,5,29.99,1,HOME,https://placehold.jp/800x802.png,1,description test 2, short description
+Produit C,REF003,20,39.99,1,4,https://placehold.jp/800x803.png,1,description test 2,short description
