@@ -26,19 +26,20 @@ class VitisoftIntegration extends Module
             return false; // Si l'installation échoue ou le hook ne peut pas être enregistré
         }
     
-        // Créer le dossier vitisoftintegration si nécessaire
-        $moduleDir = _PS_MODULE_DIR_ . 'vitisoftintegration';
-        if (!is_dir($moduleDir)) {
-            if (!mkdir($moduleDir, 0777, true)) {
+        // Définir le chemin vers le répertoire principal de PrestaShop
+        $prestashopDir = _PS_ROOT_DIR_ . '/vitisoft';
+    
+        // Créer le dossier vitisoft si nécessaire
+        if (!is_dir($prestashopDir)) {
+            if (!mkdir($prestashopDir, 0777, true)) {
                 return false; // Vérifier si le dossier principal a été créé
             }
         }
     
         // Créer les sous-dossiers nécessaires
         $subDirs = [
-            $moduleDir . '/files',
-            $moduleDir . '/files/orders/processed',
-            $moduleDir . '/files/products/processed'
+            $prestashopDir . '/orders/processed',
+            $prestashopDir . '/products/processed'
         ];
     
         foreach ($subDirs as $dir) {
@@ -50,13 +51,8 @@ class VitisoftIntegration extends Module
         // Définir les bonnes permissions pour permettre l'accès aux fichiers
         foreach ($subDirs as $dir) {
             // Assurez-vous que les fichiers sont accessibles en lecture/écriture
-            chmod($dir, 0777);  // Permissions de lecture, écriture, exécution pour tous
+            chmod($dir, 0777); // Permissions de lecture, écriture, exécution pour tous
         }
-    
-        // Ajouter la tâche cron
-        // if (!$this->addCronJob()) {
-        //     return false; // Vérifier si la tâche cron a été ajoutée
-        // }
     
         // Ajouter les tabs
         if (!$this->addTab('AdminExportOrder', 'AdminParentOrders', 'Exportées en csv (Vitisoft)', $this->name)) {
@@ -65,10 +61,10 @@ class VitisoftIntegration extends Module
     
         if (!$this->addTab('AdminVitisoftImport', 'AdminCatalog', 'Imports des produits csv', $this->name)) {
             return false; // Si l'ajout du tab "Imports des produits csv" échoue
-        }        
+        }
     
         return true; // Retourner true si l'installation a réussi
-    }
+    }    
     
     public function addTab($className, $parentTabClass, $tabName, $moduleName)
     {
@@ -124,17 +120,37 @@ class VitisoftIntegration extends Module
     // Fonction qui sera appelée par le CRON pour traiter les fichiers CSV envoyés par Vitisoft
     public function processVitisoftFiles()
     {
-        $directoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/products/';
-        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/products/processed/';
-        $files = glob($directoryPath . '*.csv');
-
-        foreach ($files as $file) {
-            $this->importProductsFromCSV($file);
-            rename($file, $processedDirectoryPath . basename($file));
+        // Chemin du dossier de fichiers à traiter
+        $directoryPath = _PS_ROOT_DIR_ . '/vitisoft/products/';
+        $processedDirectoryPath = _PS_ROOT_DIR_ . '/vitisoft/products/processed/';
+    
+        // Vérifier si les répertoires existent
+        if (!is_dir($directoryPath)) {
+            return 'Le répertoire des fichiers à traiter n\'existe pas.';
         }
-
+        if (!is_dir($processedDirectoryPath) && !mkdir($processedDirectoryPath, 0777, true)) {
+            return 'Impossible de créer le répertoire pour les fichiers traités.';
+        }
+    
+        // Récupérer les fichiers CSV dans le répertoire
+        $files = glob($directoryPath . '*.csv');
+        if (empty($files)) {
+            return 'Aucun fichier CSV trouvé à traiter.';
+        }
+    
+        // Traiter chaque fichier
+        foreach ($files as $file) {
+            try {
+                $this->importProductsFromCSV($file); // Appeler une méthode pour importer les produits
+                rename($file, $processedDirectoryPath . basename($file)); // Déplacer le fichier traité
+            } catch (Exception $e) {
+                // Gestion des erreurs spécifiques au traitement
+                return 'Erreur lors du traitement du fichier : ' . basename($file) . '. ' . $e->getMessage();
+            }
+        }
+    
         return 'Traitement des fichiers Vitisoft terminé.';
-    }
+    }    
 
     // Fonction pour importer les produits depuis le fichier CSV
     public function importProductsFromCSV($csvFilePath)
@@ -320,10 +336,10 @@ class VitisoftIntegration extends Module
         $products = $order->getProducts();
     
         // Définir le chemin du fichier CSV à générer
-        $filename = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/order_' . $orderId . '.csv';
+        $filename = _PS_ROOT_DIR_ . '/vitisoft/orders/order_' . $orderId . '.csv';
     
         // Vérifier si le fichier peut être créé
-        if (!is_writable(_PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/')) {
+        if (!is_writable(_PS_ROOT_DIR_ . '/vitisoft/orders/')) {
             return json_encode(['status' => 'error', 'message' => 'Le dossier de destination n\'est pas accessible en écriture.']);
         }
     
@@ -400,7 +416,7 @@ class VitisoftIntegration extends Module
         fclose($file);
     
         // Créer le dossier "processed" si nécessaire et déplacer le fichier
-        $processedDirectoryPath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/processed/';
+        $processedDirectoryPath = _PS_ROOT_DIR_ . '/vitisoft/orders/processed/';
         if (!is_dir($processedDirectoryPath)) {
             if (!mkdir($processedDirectoryPath, 0777, true)) {
                 return json_encode(['status' => 'error', 'message' => 'Échec de la création du dossier de destination.']);
@@ -427,11 +443,11 @@ class VitisoftIntegration extends Module
             
             $this->exportOrderToCSV($orderId);
 
-            file_put_contents(_PS_MODULE_DIR_ . 'vitisoftintegration/debug_hook_net.txt', 'Success 200 : ' . $orderId . PHP_EOL, FILE_APPEND);
+            file_put_contents(_PS_ROOT_DIR_ . '/vitisoft/debug_hook_net.txt', 'Success 200 : ' . $orderId . PHP_EOL, FILE_APPEND);
 
         } else {
             var_dump('Order object not found');
-            file_put_contents(_PS_MODULE_DIR_ . 'vitisoftintegration/debug_hook_net.txt', 'Error 404 : ' . PHP_EOL, FILE_APPEND);
+            file_put_contents(_PS_ROOT_DIR_ . '/vitisoft/debug_hook_net.txt', 'Error 404 : ' . PHP_EOL, FILE_APPEND);
 
         }
 

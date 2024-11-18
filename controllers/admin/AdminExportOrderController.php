@@ -15,13 +15,9 @@ class AdminExportOrderController extends ModuleAdminController
     
         $orders = $this->getAllOrdersDetails();
 
-        // Récupérer la configuration pour l'export
-        $order_update = Configuration::get('viti_file_172');
-
         // Assignation des données à Smarty pour le template
         $this->context->smarty->assign([
             'message' => 'Export de commande',
-            'order_update' => $order_update,
             'orders' => $orders
         ]);
 
@@ -80,24 +76,26 @@ class AdminExportOrderController extends ModuleAdminController
 
     public function downloadCSV($filePath)
     {
-    // Chemin complet du fichier CSV
-    $fullFilePath = _PS_MODULE_DIR_ . 'vitisoftintegration/files/orders/processed/' . $filePath;
-
-    // Générer un token d'accès pour la page admin
-    $token = Tools::getAdminTokenLite('AdminExportOrder');
-
-    // Vérifiez si le fichier existe avant de tenter un téléchargement
-    if (file_exists($fullFilePath)) {
-        // Rediriger avec le token pour forcer l'accès
-        $downloadUrl = $this->context->link->getBaseLink() . 'modules/vitisoftintegration/files/orders/processed/' . $filePath . '?token=' . $token;
-
-        // Utiliser un en-tête HTTP pour la redirection ou appeler le téléchargement directement
-        header('Location: ' . $downloadUrl);
-        exit;
-    } else {
-        die('Fichier introuvable : ' . $fullFilePath);
-    }
-    }
+        // Chemin complet du fichier CSV dans le répertoire principal de PrestaShop
+        $fullFilePath = _PS_ROOT_DIR_ . '/vitisoft/orders/processed/' . $filePath;
+    
+        // Vérifiez si le fichier existe avant de tenter un téléchargement
+        if (file_exists($fullFilePath)) {
+            // Définir les en-têtes pour le téléchargement du fichier
+            header('Content-Description: File Transfer');
+            header('Content-Type: application/csv');
+            header('Content-Disposition: attachment; filename="' . basename($fullFilePath) . '"');
+            header('Content-Length: ' . filesize($fullFilePath));
+            header('Cache-Control: must-revalidate');
+            header('Pragma: public');
+    
+            // Lire le fichier et l'envoyer au navigateur
+            readfile($fullFilePath);
+            exit;
+        } else {
+            die('Fichier introuvable : ' . $fullFilePath);
+        }
+    }    
     
     
 }
