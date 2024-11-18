@@ -21,22 +21,22 @@ class VitisoftIntegration extends Module
 
     public function install()
     {
-        // Installer le module et enregistrer le hook actionOrderStatusPostUpdate
+        // Install the module and register the hooks actionOrderStatusPostUpdate and displayBackOfficeHeader
         if (!parent::install() || !$this->registerHook('actionOrderStatusPostUpdate') || !$this->registerHook('displayBackOfficeHeader')) {
-            return false; // Si l'installation échoue ou le hook ne peut pas être enregistré
+            return false;
         }
     
-        // Définir le chemin vers le répertoire principal de PrestaShop
+        // Define the path to the main PrestaShop directory
         $prestashopDir = _PS_ROOT_DIR_ . '/vitisoft';
     
-        // Créer le dossier vitisoft si nécessaire
+        // Create the vitisoft folder if it does not exist
         if (!is_dir($prestashopDir)) {
             if (!mkdir($prestashopDir, 0777, true)) {
-                return false; // Vérifier si le dossier principal a été créé
+                return false; // Return false if the directory creation fails
             }
         }
     
-        // Créer les sous-dossiers nécessaires
+        // Create the necessary subdirectories
         $subDirs = [
             $prestashopDir . '/orders/processed',
             $prestashopDir . '/products/processed'
@@ -44,79 +44,56 @@ class VitisoftIntegration extends Module
     
         foreach ($subDirs as $dir) {
             if (!is_dir($dir) && !mkdir($dir, 0777, true)) {
-                return false; // Vérifier chaque sous-dossier
+                return false; // Return false if any subdirectory creation fails
             }
         }
     
-        // Définir les bonnes permissions pour permettre l'accès aux fichiers
+        // Set the correct permissions to allow access to the files
         foreach ($subDirs as $dir) {
-            // Assurez-vous que les fichiers sont accessibles en lecture/écriture
-            chmod($dir, 0777); // Permissions de lecture, écriture, exécution pour tous
+            // Ensure that files are readable/writable
+            chmod($dir, 0777); // Permissions for read, write, execute for all
         }
     
-        // Ajouter les tabs
-        if (!$this->addTab('AdminExportOrder', 'AdminParentOrders', 'Exportées en csv (Vitisoft)', $this->name)) {
-            return false; // Si l'ajout du tab "Export Order" échoue
+        // Add the admin tabs
+        if (!$this->addTab('AdminExportOrder', 'AdminParentOrders', 'Exported in CSV (Vitisoft)', $this->name)) {
+            return false;
         }
     
-        if (!$this->addTab('AdminVitisoftImport', 'AdminCatalog', 'Imports des produits csv', $this->name)) {
-            return false; // Si l'ajout du tab "Imports des produits csv" échoue
+        if (!$this->addTab('AdminVitisoftImport', 'AdminCatalog', 'Product CSV Imports', $this->name)) {
+            return false;
         }
     
-        return true; // Retourner true si l'installation a réussi
-    }    
+        return true; // Return true if the installation succeeds
+    }       
     
     public function addTab($className, $parentTabClass, $tabName, $moduleName)
     {
-        // Créer un nouvel objet Tab
         $tab = new Tab();
         $tab->class_name = $className;
         $tab->module = $moduleName;
-
-        // Définir le parent du tab
+    
         $tab->id_parent = Tab::getIdFromClassName($parentTabClass);
-
-        // Ajouter les noms du tab pour chaque langue
+    
         foreach (Language::getLanguages() as $lang) {
             $tab->name[$lang['id_lang']] = $tabName;
         }
-
-        // Ajouter le tab dans le back-office et vérifier si cela réussit
+    
         return $tab->add();
-    }
+    }    
 
     public function uninstall()
     {
-        // Supprimer les sous-dossiers créés
-        // rmdir(_PS_MODULE_DIR_ . 'vitisoftintegration/files/');
-        // rmdir(_PS_MODULE_DIR_ . 'vitisoftintegration/orders/');
-
-        // Supprimer la tâche cron
-        // $this->removeCronJob();
-
         return parent::uninstall();
     }
 
-    // Ajout d'une tâche CRON pour la gestion des fichiers CSV
-    public function addCronJob()
-    {
-        // Ajoutez ici votre code pour planifier le cron job via PrestaShop ou le serveur
-    }
-
-    // Suppression de la tâche CRON
-    public function removeCronJob()
-    {
-        // Ajoutez ici votre code pour supprimer la tâche cron
-    }
-
-    // Fonction qui sera appelée par le CRON pour traiter les fichiers CSV envoyés par Vitisoft
+    // Cron function
     public function processVitisoftFiles()
     {
-        // Chemin du dossier de fichiers à traiter
+        // Folder directory
         $directoryPath = _PS_ROOT_DIR_ . '/vitisoft/products/';
         $processedDirectoryPath = _PS_ROOT_DIR_ . '/vitisoft/products/processed/';
     
-        // Vérifier si les répertoires existent
+        // Check folder exist
         if (!is_dir($directoryPath)) {
             return 'Le répertoire des fichiers à traiter n\'existe pas.';
         }
@@ -124,19 +101,18 @@ class VitisoftIntegration extends Module
             return 'Impossible de créer le répertoire pour les fichiers traités.';
         }
     
-        // Récupérer les fichiers CSV dans le répertoire
+        // Get csv file
         $files = glob($directoryPath . '*.csv');
         if (empty($files)) {
             return 'Aucun fichier CSV trouvé à traiter.';
         }
     
-        // Traiter chaque fichier
+        // Process each file
         foreach ($files as $file) {
             try {
-                $this->importProductsFromCSV($file); // Appeler une méthode pour importer les produits
-                rename($file, $processedDirectoryPath . basename($file)); // Déplacer le fichier traité
+                $this->importProductsFromCSV($file);
+                rename($file, $processedDirectoryPath . basename($file)); // Move file
             } catch (Exception $e) {
-                // Gestion des erreurs spécifiques au traitement
                 return 'Erreur lors du traitement du fichier : ' . basename($file) . '. ' . $e->getMessage();
             }
         }
@@ -144,7 +120,7 @@ class VitisoftIntegration extends Module
         return 'Traitement des fichiers Vitisoft terminé.';
     }    
 
-    // Fonction pour importer les produits depuis le fichier CSV
+    // Function to import products from the CSV file
     public function importProductsFromCSV($csvFilePath)
     {
         if (!file_exists($csvFilePath)) {
@@ -176,21 +152,21 @@ class VitisoftIntegration extends Module
         }
     }
 
-    // Fonction pour créer ou mettre à jour les produits
+    // Update or create product
     private function createOrUpdateProduct($name, $reference, $quantity, $price, $imageUrl, $category, $taxId, $description, $shortDescription)
     {
-        // Rechercher un produit existant par référence
+        // Check product by reference
         $productId = Product::getIdByReference($reference);
         
-        // Si le produit existe, charger l'objet du produit pour mise à jour
+        // If the product exists, load the product object for updating
         if ($productId) {
             $product = new Product($productId);
         } else {
-            // Sinon, créer un nouvel objet produit
+            // Otherwise, create a new product object
             $product = new Product();
         }
         
-        // Définir les propriétés communes
+        // Set the common properties
         $product->name = array_fill_keys(Language::getIDs(false), $name);
         $product->reference = $reference;
         $product->price = $price;
@@ -199,17 +175,16 @@ class VitisoftIntegration extends Module
         $product->description = array_fill_keys(Language::getIDs(false), $description);
         $product->description_short = array_fill_keys(Language::getIDs(false), $shortDescription);
     
-        // Définir la catégorie par défaut
+        // Set the default category
         if ($category) {
             $product->id_category_default = $category != 'HOME' ? (int) $category : 2;
         }
     
-        // Ajouter ou mettre à jour le produit
+        // add or update product
         if ($productId ? $product->update() : $product->add()) {
-            // Mettre à jour la quantité en stock
             StockAvailable::setQuantity($product->id, 0, $quantity);
     
-            // Associer le produit à la catégorie
+            // Assign the product to the category
             if ($category) {
                 $categoryObj = new Category($category);
                 if (Validate::isLoadedObject($categoryObj)) {
@@ -217,7 +192,7 @@ class VitisoftIntegration extends Module
                 }
             }
     
-            // Ajouter ou mettre à jour l'image si elle est valide
+            // Add or update the image if it is valid
             if ($imageUrl && filter_var($imageUrl, FILTER_VALIDATE_URL)) {
                 $imageAdded = $this->downloadAndUploadImage($product->id, $imageUrl);
                 if (!$imageAdded) {
@@ -234,40 +209,40 @@ class VitisoftIntegration extends Module
         $tempDir = _PS_TMP_IMG_DIR_;
         $tempImagePath = $tempDir . uniqid() . '.jpg';
     
-        // Télécharger l'image à partir de l'URL
+        // Download product by url
         if ($this->downloadImage($imageUrl, $tempImagePath)) {
-            // Vérifier si le produit a déjà une image principale (cover)
+            // Check if the product already has a main image (cover)
             $existingCoverImage = Db::getInstance()->getRow('
                 SELECT id_image FROM '._DB_PREFIX_.'image
                 WHERE id_product = '.(int)$productId.' AND cover = 1
             ');
     
-            // Si une image principale existe déjà, la supprimer
+            // If a main image exists, delete it
             if ($existingCoverImage) {
                 $existingImage = new Image((int)$existingCoverImage['id_image']);
                 $existingImage->delete();
             }
     
-            // Créer un nouvel objet image
+            // Create a new object
             $image = new Image();
             $image->id_product = $productId;
             $image->position = Image::getHighestPosition($productId) + 1;
-            $image->cover = true;  // Assigner cette image comme couverture principale
+            $image->cover = true;  // cover principal
     
             if ($image->add()) {
                 $imagePath = _PS_PROD_IMG_DIR_ . $image->getImgPath() . '.jpg';
                 $directoryPath = dirname($imagePath);
     
-                // Créer le répertoire si nécessaire
+                // Create the directory if necessary
                 if (!file_exists($directoryPath)) {
                     mkdir($directoryPath, 0777, true);
                 }
     
-                // Déplacer l'image téléchargée vers le répertoire du produit
+                // Move the uploaded image to the product directory
                 if (rename($tempImagePath, $imagePath)) {
                     $imagesTypes = ImageType::getImagesTypes('products');
                     foreach ($imagesTypes as $imageType) {
-                        // Redimensionner l'image pour les différentes tailles
+                        // Resize the image for different sizes
                         ImageManager::resize(
                             $imagePath,
                             _PS_PROD_IMG_DIR_ . $image->getImgPath() . '-' . $imageType['name'] . '.jpg',
@@ -286,7 +261,7 @@ class VitisoftIntegration extends Module
         return false;
     }
 
-    // Fonction pour télécharger l'image depuis une URL
+    // Download image by URL
     private function downloadImage($url, $path)
     {
         $ch = curl_init($url);
@@ -309,35 +284,35 @@ class VitisoftIntegration extends Module
 
     public function exportOrderToCSV($orderId)
     {
-        // Récupérer la commande
+        // Retrieve order
         $order = new Order($orderId);
         if (!Validate::isLoadedObject($order)) {
             return json_encode(['status' => 'error', 'message' => 'Commande introuvable.']);
         }
 
-        // Récupérer le client et les informations de facturation et livraison
+        // Client
         $customer = new Customer($order->id_customer);
         $billingAddress = new Address($order->id_address_invoice);
         $deliveryAddress = new Address($order->id_address_delivery);
 
-        // Récupérer les produits associés à la commande
+        // Products
         $products = $order->getProducts();
 
-        // Définir le chemin du fichier CSV à générer
+        // Set the path for the CSV file to be generated
         $filename = _PS_ROOT_DIR_ . '/vitisoft/orders/order_' . $orderId . '.csv';
 
-        // Vérifier si le fichier peut être créé
+        // Check if the file can be created
         if (!is_writable(_PS_ROOT_DIR_ . '/vitisoft/orders/')) {
             return json_encode(['status' => 'error', 'message' => 'Le dossier de destination n\'est pas accessible en écriture.']);
         }
 
-        // Ouvrir le fichier en mode écriture
+        // Open the file in write mode
         $file = fopen($filename, 'w');
 
-        // Ajouter le BOM UTF-8 pour gérer les caractères spéciaux
+        // Add the UTF-8 BOM to handle special characters
         fputs($file, "\xEF\xBB\xBF");
 
-        // Définir les en-têtes du fichier CSV
+        // Define the header csv
         $headers = [
             'numéro_commande', 'mail_client', 'référence_commande_client', 'date_heure_commande', 
             'civilité_facturation', 'nom_facturation', 'prenom_facturation', 'societe_facturation', 
@@ -353,10 +328,10 @@ class VitisoftIntegration extends Module
 
         $idCarrier = $order->id_carrier;
 
-        // Obtenir le nom du transporteur
+        // Get the carrier name
         $carrier = new Carrier($idCarrier);
 
-        // Parcourir les produits et ajouter leurs informations dans le fichier CSV
+        // All informations csv
         foreach ($products as $index => $product) {
             $line = [
                 'numéro_commande' => $order->id,
@@ -400,7 +375,7 @@ class VitisoftIntegration extends Module
             fputcsv($file, $line);
         }
 
-        // Fermer le fichier après l'écriture
+        // Close the file after writing
         fclose($file);
 
         return json_encode(['status' => 'success', 'message' => 'Fichier CSV généré avec succès.', 'file' => $filename]);
@@ -425,7 +400,6 @@ class VitisoftIntegration extends Module
 
     public function hookDisplayBackOfficeHeader()
     {
-        // Lier le fichier CSS
         $this->context->controller->addCSS($this->_path . 'views/css/styles.css', 'all');
     }
 

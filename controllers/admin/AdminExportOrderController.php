@@ -37,8 +37,8 @@ class AdminExportOrderController extends ModuleAdminController
                 $orderDetail = [
                     'id_order'        => $order['id_order'],
                     'reference'       => $order['reference'],
-                    'nouveau_client'  => $order['id_customer'] == 0 ? 'Oui' : 'Non', // Nouveau client si l'id_customer est 0
-                    'client_name'     => $order['firstname'] . ' ' . $order['lastname'], // Nom complet du client
+                    'nouveau_client'  => $order['id_customer'] == 0 ? 'Oui' : 'Non',
+                    'client_name'     => $order['firstname'] . ' ' . $order['lastname'],
                     'total'           => $order['total_paid_tax_incl'],
                     'payment'         => $order['payment'],
                     'order_date'      => $order['date_add'],
