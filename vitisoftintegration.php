@@ -75,11 +75,6 @@ class VitisoftIntegration extends Module
 
         // Définir le parent du tab
         $tab->id_parent = Tab::getIdFromClassName($parentTabClass);
-        
-        // Vérifier si l'ID parent est valide
-        // if (!$tab->id_parent) {
-        //     return false; // Si l'ID parent est invalide, retourner false
-        // }
 
         // Ajouter les noms du tab pour chaque langue
         foreach (Language::getLanguages() as $lang) {
@@ -88,10 +83,7 @@ class VitisoftIntegration extends Module
 
         // Ajouter le tab dans le back-office et vérifier si cela réussit
         return $tab->add();
-
-
     }
-
 
     public function uninstall()
     {
@@ -293,7 +285,6 @@ class VitisoftIntegration extends Module
         }
         return false;
     }
-    
 
     // Fonction pour télécharger l'image depuis une URL
     private function downloadImage($url, $path)
@@ -316,7 +307,6 @@ class VitisoftIntegration extends Module
         return false;
     }
 
-
     public function exportOrderToCSV($orderId)
     {
         // Récupérer la commande
@@ -324,31 +314,29 @@ class VitisoftIntegration extends Module
         if (!Validate::isLoadedObject($order)) {
             return json_encode(['status' => 'error', 'message' => 'Commande introuvable.']);
         }
-    
+
         // Récupérer le client et les informations de facturation et livraison
         $customer = new Customer($order->id_customer);
         $billingAddress = new Address($order->id_address_invoice);
         $deliveryAddress = new Address($order->id_address_delivery);
 
-        // var_dump($billingAddress);
-    
         // Récupérer les produits associés à la commande
         $products = $order->getProducts();
-    
+
         // Définir le chemin du fichier CSV à générer
         $filename = _PS_ROOT_DIR_ . '/vitisoft/orders/order_' . $orderId . '.csv';
-    
+
         // Vérifier si le fichier peut être créé
         if (!is_writable(_PS_ROOT_DIR_ . '/vitisoft/orders/')) {
             return json_encode(['status' => 'error', 'message' => 'Le dossier de destination n\'est pas accessible en écriture.']);
         }
-    
+
         // Ouvrir le fichier en mode écriture
         $file = fopen($filename, 'w');
 
         // Ajouter le BOM UTF-8 pour gérer les caractères spéciaux
         fputs($file, "\xEF\xBB\xBF");
-    
+
         // Définir les en-têtes du fichier CSV
         $headers = [
             'numéro_commande', 'mail_client', 'référence_commande_client', 'date_heure_commande', 
@@ -367,7 +355,7 @@ class VitisoftIntegration extends Module
 
         // Obtenir le nom du transporteur
         $carrier = new Carrier($idCarrier);
-    
+
         // Parcourir les produits et ajouter leurs informations dans le fichier CSV
         foreach ($products as $index => $product) {
             $line = [
@@ -396,43 +384,27 @@ class VitisoftIntegration extends Module
                 'mobile_livraison' => $deliveryAddress->phone_mobile,
                 'mode_de_règlement' => $order->payment,
                 'commentaire_livraison' => $order->gift_message,
-                'montant_livraison' => number_format($order->total_shipping_tax_incl, 2), // Arrondi à 2 décimales
+                'montant_livraison' => number_format($order->total_shipping_tax_incl, 2),
                 'Transporteur' => $carrier->name,
-                'Total_HT' => number_format($order->total_paid_tax_excl, 2), // Arrondi à 2 décimales
+                'Total_HT' => number_format($order->total_paid_tax_excl, 2),
                 'numéro_ligne' => $index + 1,
                 'numéro_produit_vitisoft' => $product['product_reference'],
                 'désignation' => $product['product_name'],
                 'quantité' => $product['product_quantity'],
-                'taux_tva' => number_format($product['tax_rate'], 2), // Arrondi à 2 décimales
-                'prix_unitaire' => number_format($product['unit_price_tax_incl'], 2), // Arrondi à 2 décimales
-                'prix_unitaire_sans_remise' => number_format($product['unit_price_tax_excl'], 2), // Arrondi à 2 décimales
-                'montant_remise_unitaire' => number_format($product['reduction_amount_tax_excl'], 2), // Arrondi à 2 décimales
-                'total_ht_ligne' => number_format($product['total_price_tax_excl'], 2) // Arrondi à 2 décimales
+                'taux_tva' => number_format($product['tax_rate'], 2),
+                'prix_unitaire' => number_format($product['unit_price_tax_incl'], 2),
+                'prix_unitaire_sans_remise' => number_format($product['unit_price_tax_excl'], 2),
+                'montant_remise_unitaire' => number_format($product['reduction_amount_tax_excl'], 2),
+                'total_ht_ligne' => number_format($product['total_price_tax_excl'], 2)
             ];            
             fputcsv($file, $line);
         }
-    
+
         // Fermer le fichier après l'écriture
         fclose($file);
-    
-        // Créer le dossier "processed" si nécessaire et déplacer le fichier
-        $processedDirectoryPath = _PS_ROOT_DIR_ . '/vitisoft/orders/processed/';
-        if (!is_dir($processedDirectoryPath)) {
-            if (!mkdir($processedDirectoryPath, 0777, true)) {
-                return json_encode(['status' => 'error', 'message' => 'Échec de la création du dossier de destination.']);
-            }
-        }
-    
-        $processedFilePath = $processedDirectoryPath . basename($filename);
-        if (rename($filename, $processedFilePath)) {
-            Configuration::updateValue('viti_file_' . $orderId, 'uploaded');
-            return json_encode(['status' => 'success', 'message' => 'Fichier CSV généré, déplacé et l\'état mis à jour avec succès.', 'file' => $processedFilePath]);
-        } else {
-            return json_encode(['status' => 'error', 'message' => 'Échec du déplacement du fichier CSV.']);
-        }
+
+        return json_encode(['status' => 'success', 'message' => 'Fichier CSV généré avec succès.', 'file' => $filename]);
     }
-    
-        
 
     public function hookActionOrderStatusPostUpdate($params)
     {
@@ -446,9 +418,7 @@ class VitisoftIntegration extends Module
             file_put_contents(_PS_ROOT_DIR_ . '/vitisoft/debug_hook_net.txt', 'Success 200 : ' . $orderId . PHP_EOL, FILE_APPEND);
 
         } else {
-            var_dump('Order object not found');
             file_put_contents(_PS_ROOT_DIR_ . '/vitisoft/debug_hook_net.txt', 'Error 404 : ' . PHP_EOL, FILE_APPEND);
-
         }
 
     }
@@ -459,7 +429,5 @@ class VitisoftIntegration extends Module
         $this->context->controller->addCSS($this->_path . 'views/css/styles.css', 'all');
     }
 
-
-   
 
 }
